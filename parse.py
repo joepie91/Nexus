@@ -136,11 +136,6 @@ while idx < rulebook_length:
 		if new_line == True:
 			if tab_count > current_level + 1:
 				raise Exception("Incorrect indentation")
-			else:
-				try:
-					target_rule = current_rule[tab_count - 1]
-				except KeyError, e:
-					pass# FIXME: raise Exception("Incorrect indentation (bug?)")
 			
 			if rulebook[idx:idx+2] == "=>":
 				# Skip over this, it's optional at the start of a line
@@ -150,7 +145,8 @@ while idx < rulebook_length:
 			new_line = False
 		
 		if char == "\r":
-			pass #ignore
+			idx += 1
+			continue # Ignore, we don't want carriage returns
 		elif char == "\n":
 			# Process
 			if buff.strip() == "":
