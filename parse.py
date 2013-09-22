@@ -145,8 +145,9 @@ def create_group(elements, operators):
 					for i in xrange(start, end):
 						# Mark as processed
 						sieve[i] = False
-					for i in [x for x in sieve if x is True]:
+					for i in [x for x in xrange(0, end) if sieve[x] is True]:
 						final_list.append(elements[i])
+						sieve[i] = False
 					final_list.append(create_group(relevant_elements, [AND for x in xrange(0, end - start)]))
 					
 				idx += len(items)
