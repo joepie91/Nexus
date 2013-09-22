@@ -20,6 +20,13 @@ class Bin(Element):
 		
 	def get_description(self):
 		return "[Bin] %s" % self.name
+		
+	def process(self, message):
+		self.forward(message)
+		
+	def forward(self, message):
+		for output in self.outputs:
+			output.process(message)
 	
 class Rule(Element):
 	def __init__(self, input_):
@@ -56,10 +63,10 @@ class Filter(Rule):
 		
 		while idx < rule_length:
 			char = rule[idx]
-			print len(buff), len(rule), idx, buff
+			#print len(buff), len(rule), idx, buff
 			if char == "(" and in_expression == False:
 				# New group encountered
-				print "START GROUP %d" % current_depth
+				#print "START GROUP %d" % current_depth
 				current_depth += 1
 			elif char == ")" and in_expression == False:
 				# End statement, Process list of elements
@@ -71,10 +78,10 @@ class Filter(Rule):
 				element_list[current_depth] = []
 				operator_list[current_depth] = [] # Clear out lists to prevent working with stale data
 					
-				print "-- GR: %s" % group
+				#print "-- GR: %s" % group
 				buff = ""
 				current_depth -= 1
-				print "END GROUP %d" % current_depth
+				#print "END GROUP %d" % current_depth
 			elif char == '"':
 				in_expression = not in_expression
 				buff += '"'
@@ -114,11 +121,19 @@ class Filter(Rule):
 		else:
 			# FIXME: Proper exception
 			raise Exception("No root elements?!")
-			
-		print repr(root_element)
+		
+		self.root = root_element
+		#print repr(root_element)
 		
 	def get_description(self):
 		return "[Filter] %s" % self.rule
+		
+	def evaluate(self, message):
+		return self.root.evaluate(message)
+		
+	def process(self, message):
+		if self.evaluate(message):
+			self.forward(message)
 
 def create_group(elements, operators):
 	group = FilterExpressionGroup()
@@ -126,7 +141,7 @@ def create_group(elements, operators):
 	# Process operators
 	if len(elements) > 1:
 		# Check if the operators vary
-		operator_discrepancy = not all(operators[0] == x for x in operators)
+		operator_discrepancy = (len(set(operators)) > 1)
 		
 		if operator_discrepancy:
 			# We'll need to find the 'and' chains and push them into separate child groups
@@ -231,6 +246,10 @@ class BinReference(Rule):
 			
 	def get_description(self):
 		return "[BinRef] %s" % self.bin_name
+		
+	def process(self, message):
+		# TODO: Actually deposit into bin
+		print "DEPOSITED INTO BIN %s" % self.name
 
 class NodeReference(Rule):
 	def __init__(self, input_, name):
@@ -240,6 +259,10 @@ class NodeReference(Rule):
 	def get_description(self):
 		return "[NodeRef] %s" % self.node_name
 		
+	def process(self, message):
+		# TODO: Actually forward to node
+		print "FORWARDED TO NODE %s" % self.node_name
+		
 class MethodReference(Rule):
 	def __init__(self, input_, name):
 		Rule.__init__(self, input_)
@@ -248,6 +271,10 @@ class MethodReference(Rule):
 	def get_description(self):
 		return "[MethodRef] %s" % self.method_name
 		
+	def process(self, message):
+		# TODO: Actually pass to method
+		print "PASSED TO METHOD %s" % self.method_name
+		
 class DistributorReference(Rule):
 	def __init__(self, input_, name, args):
 		Rule.__init__(self, input_)
@@ -255,7 +282,12 @@ class DistributorReference(Rule):
 		self.args = args
 		
 	def get_description(self):
-		return "[DistRef] %s" % self.distributor_name
+		return "[DistRef] %s (%s)" % (self.distributor_name, ", ".join(self.args))
+		
+	def process(self, message):
+		# TODO: Actually distribute
+		# TODO: Parse args
+		pass#print "DISTRIBUTED TO %s" % self.get_description()
 
 NONE = 0
 AND = 1
@@ -277,19 +309,22 @@ class FilterExpression(object):
 		
 	def evaluate(self, message):
 		if self.operator == EQUALS:
-			return (self.left == self.right)
+			return (self.left.value(message) == self.right.value(message))
 		elif self.operator == NOT_EQUALS:
-			return (self.left != self.right)
+			return (self.left.value(message) != self.right.value(message))
 		elif self.operator == LESS_THAN:
-			return (self.left < self.right)
+			return (self.left.value(message) < self.right.value(message))
 		elif self.operator == MORE_THAN:
-			return (self.left > self.right)
+			return (self.left.value(message) > self.right.value(message))
 		elif self.operator == LESS_THAN_OR_EQUALS:
-			return (self.left <= self.right)
+			return (self.left.value(message) <= self.right.value(message))
 		elif self.operator == MORE_THAN_OR_EQUALS:
-			return (self.left >= self.right)
+			return (self.left.value(message) >= self.right.value(message))
 		elif self.operator == HAS:
-			return False  # TODO: Implement array lookup?
+			if is_instance(self.left, basestring):
+				return (self.right.value(message) in self.left.value(message))  # Substring comparison
+			else:
+				return (self.right.value(message) in self.left.values(message))  # In-array check
 		else:
 			# TODO: Log error
 			return False
@@ -325,12 +360,12 @@ class FilterExpressionGroup(object):
 	def evaluate(self, message):
 		if self.relation == AND:
 			for element in self.elements:
-				if element.evaluate() != True:
+				if element.evaluate(message) != True:
 					return False
 			return True
 		elif self.relation == OR:
 			for element in self.elements:
-				if element.evaluate() == True:
+				if element.evaluate(message) == True:
 					return True
 			return False
 		else:
@@ -347,7 +382,38 @@ class FilterExpressionGroup(object):
 		return "<FEGroup %s (%s)>" % (relname, ", ".join(repr(x) for x in self.elements))
 
 class FilterExpressionElement(object):
-	pass
+	def select_value(self, message, scope, name, multiple=False):
+		if scope == "tags":
+			return_value = message.tags
+		elif scope == "type":
+			return_value = message.type_
+		elif scope == "source":
+			return_value = message.source
+		elif scope == "chain":
+			return_value = message.chain
+		elif scope == "attr":
+			return_value = self.select_attribute(message, name, multiple=multiple)
+		else:
+			raise Exception("Unknown scope")  # FIXME: Proper exception
+			
+		if isinstance(return_value, basestring):
+			return return_value
+		elif multiple == False and len(return_value) > 0:
+			return return_value[0]
+		else:
+			raise Exception("No value found") # FIXME: Proper exception
+			
+	def select_attribute(self, message, query, multiple=False):
+		segments = query.split("/")
+		current_object = message.data
+		
+		for segment in segments:
+			try:
+				current_object = current_object[segment]
+			except KeyError, e:
+				raise Exception("Unknown attribute")  # FIXME: Proper exception
+				
+		return current_object
 	
 class FilterExpressionVariable(FilterExpressionElement):
 	def __init__(self, scope, name=None):
@@ -355,8 +421,11 @@ class FilterExpressionVariable(FilterExpressionElement):
 		self.name = name
 		# TODO: name path parsing
 		
-	def get_value(self, message):
-		return False # TODO: grab correct value
+	def value(self, message):
+		return self.select_value(message, self.scope, self.name, multiple=False)
+	
+	def values(self, message):
+		return self.select_value(message, self.scope, self.name, multiple=True)
 		
 	def __repr__(self):
 		return "<FEVar %s/%s>" % (self.scope, self.name)
@@ -365,8 +434,11 @@ class FilterExpressionString(FilterExpressionElement):
 	def __init__(self, string):
 		self.string = string
 		
-	def get_value(self, message):
+	def value(self, message):
 		return self.string
+		
+	def values(self, message):
+		return [self.string]
 		
 	def __repr__(self):
 		return "<FEString \"%s\">" % self.string
@@ -485,3 +557,43 @@ while idx < rulebook_length:
 
 for bin_name, bin_ in bins.iteritems():
 	pass#bin_.display(0)
+
+
+
+class Message(object):
+	def __init__(self):
+		self.id_ = ""
+		self.type_ = "none"
+		self.tags = []
+		self.source = ""
+		self.chain = []
+		self.data = {}
+		
+	def set_data(self, data):
+		self.id_ = data['id']
+		self.type_ = data['type'] 
+		self.tags = data['tags']
+		self.source = data['source']
+		self.chain = data['chain']
+		self.data = data['payload']
+		
+
+
+import timeit
+
+m = Message()
+m.set_data({
+	"id": "qwert-yuiop-61238-10842",
+	"type": "task",
+	"tags": ["convert", "mpeg"],
+	"source": "abcde-fghij-00000-00008",
+	"chain": ["abcde-fghij-00000-00005", "abcde-fghij-00000-00006"],
+	"payload": {
+		"command": "convert",
+		"category": "video",
+		"original_filetype": "mpg"
+	}
+})
+
+bins['remote'].process(m)
+#print min(timeit.Timer("bins['remote'].process(m)", "from __main__ import bins, m").repeat(7, 1000))
