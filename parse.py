@@ -1,5 +1,6 @@
 import sys
 from collections import defaultdict
+from itertools import groupby
 
 # TODO: Keep trail of message travelling through the rules
 
@@ -58,31 +59,19 @@ class Filter(Rule):
 			print len(buff), len(rule), idx, buff
 			if char == "(" and in_expression == False:
 				# New group encountered
-				group = FilterExpressionGroup()
-				current_element[current_depth] = group
 				print "START GROUP %d" % current_depth
 				current_depth += 1
 			elif char == ")" and in_expression == False:
 				# End statement, Process list of elements
 				element_list[current_depth].append(create_filter_expression(buff))
 				# Add elements to group object
-				for el in element_list[current_depth]:
-					current_element[current_depth - 1].add(el)
-				# Process operators
-				if len(element_list[current_depth]) > 1:
-					# Check if the operators vary
-					operators = operator_list[current_depth]
-					operator_discrepancy = not all(operators[0] == x for x in operators)
+				group = create_group(element_list[current_depth], operator_list[current_depth])
+				element_list[current_depth - 1].append(group)
+				
+				element_list[current_depth] = []
+				operator_list[current_depth] = [] # Clear out lists to prevent working with stale data
 					
-					if operator_discrepancy:
-						# We'll need to find the 'and' chains and push them into separate groups
-						print "OPERATOR DISCREPANCY"
-					
-					current_element[current_depth - 1].relation = operator_list[current_depth][0]
-					element_list[current_depth - 1].append(current_element[current_depth - 1])
-					operator_list[current_depth] = [] # Clear out list to prevent working with stale data
-					
-				print "-- GR: %s" % current_element[current_depth - 1]
+				print "-- GR: %s" % group
 				buff = ""
 				current_depth -= 1
 				print "END GROUP %d" % current_depth
@@ -112,22 +101,68 @@ class Filter(Rule):
 			raise Exception("Missing %d closing parenthese(s)." % current_depth)
 		elif current_depth < 0:
 			raise Exception("Missing %d opening parenthese(s)." % (0 - current_depth))
-			
+		
+		# If there's anything left in the buffer, it's probably a statement we still need to process.	
 		if buff.strip() != "":
 			element_list[current_depth].append(create_filter_expression(buff))
 			
 		if len(element_list[current_depth]) > 1:
 			# Multiple elements, need to encapsulate in a group
-			new_group = create_group(element_list[current_depth], operator_list[current_depth])
+			root_element = create_group(element_list[current_depth], operator_list[current_depth])
+		elif len(element_list[current_depth]) == 1:
+			root_element = element_list[current_depth][0]
+		else:
+			# FIXME: Proper exception
+			raise Exception("No root elements?!")
 			
-		# If there's anything left in the buffer, it's probably a statement we still need to process.
-		print repr(element_list)
+		print repr(root_element)
 		
 	def get_description(self):
 		return "[Filter] %s" % self.rule
 
 def create_group(elements, operators):
 	group = FilterExpressionGroup()
+		
+	# Process operators
+	if len(elements) > 1:
+		# Check if the operators vary
+		operator_discrepancy = not all(operators[0] == x for x in operators)
+		
+		if operator_discrepancy:
+			# We'll need to find the 'and' chains and push them into separate child groups
+			idx = 0
+			sieve = [True for x in xrange(0, len(elements))]
+			final_list = []
+			
+			for operator, items in groupby(operators):
+				items = list(items)
+				
+				start = idx
+				end = idx + len(items) + 1
+				relevant_elements = elements[start:end]
+				
+				if operator == AND:
+					for i in xrange(start, end):
+						# Mark as processed
+						sieve[i] = False
+					for i in [x for x in sieve if x is True]:
+						final_list.append(elements[i])
+					final_list.append(create_group(relevant_elements, [AND for x in xrange(0, end - start)]))
+					
+				idx += len(items)
+			
+			for element in final_list:
+				group.add(element)
+				
+			group.relation = OR  # Hardcoded, because all AND chains are taken care of above...
+		else:
+			for element in elements:
+				group.add(element)
+			group.relation = operators[0]
+	else:
+		group.add(elements[0])
+		
+	return group
 
 def create_filter_expression(buff):
 	# TODO: Use shlex split because of spaces in strings?
@@ -271,6 +306,8 @@ class FilterExpression(object):
 			opname = "LESS THAN OR EQUAL"
 		elif self.operator == MORE_THAN_OR_EQUALS:
 			opname = "MORE THAN OR EQUAL"
+		elif self.operator == HAS:
+			opname = "HAS"
 		else:
 			opname = "?"
 			
