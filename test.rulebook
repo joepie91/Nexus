@@ -1,0 +1,31 @@
+remote                                                                             
+	=> $type = "error"
+		=> $scope = "software"                                             
+			=> @DoSomethingAboutError                                  
+			=> #errors                                                 
+	=> $type = "task"
+		=> $attr[command] = "convert"                                      
+			=> $attr[original_filetype] = "ogg"                        
+				=> :RoundRobin                                     
+					=> *abcde-fghij-00000-00001                
+					=> *abcde-fghij-00000-00002                
+			=> $attr[category] = "video" and ($attr[original_filetype] = "mpeg" or $attr[original_filetype] = "mpg")
+				=> :RoundRobin(*mpeg_nodes)                        
+		=> $attr[command] = "whois"
+			=> :WhoisDistributor(*whois_nodes)                         
+		=> $attr[command] = "dummy"
+			=> :RoundRobin                                             
+				=> @ExtensionMethodOne => #dummy_results           
+				=> @ExtensionMethodTwo => #dummy_results           
+			=> $tags has "flag"                                        
+				=> @LogFlag                                        
+
+self                                                                               
+	=> $type = "error" or $type = "warning"                                        
+		=> #errors                                                         
+
+errors                                                                             
+	=> *logging_nodes                                                          
+	
+dummy_results                                                                      
+	=> @SaveToDatabase                                                         
