@@ -10,7 +10,8 @@ remote
 					=> *abcde-fghij-00000-00001                
 					=> *abcde-fghij-00000-00002                
 			=> $attr[category] = "video" and ($attr[original_filetype] = "mpeg" or $attr[original_filetype] = "mpg")
-				=> :RoundRobin(*mpeg_nodes)                        
+				=> :RoundRobin(*mpeg_nodes)   
+			=> $attr[herp1] = "derp1" or $attr[herp2] = "derp2" and $attr[herp3] = "derp3" or $attr[herp4] = "derp4" or $attr[herp5] = "derp5" and $attr[herp6] = "derp6" or $attr[herp7] = "derp7"
 		=> $attr[command] = "whois"
 			=> :WhoisDistributor(*whois_nodes)                         
 		=> $attr[command] = "dummy"
