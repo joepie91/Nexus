@@ -113,6 +113,10 @@ def create_group(elements, operators):
 					final_list.append(create_group(relevant_elements, [AND for x in xrange(0, end - start)]))
 					
 				idx += len(items)
+				
+			# Add the remaining OR items after the last AND chain
+			for i in [x for x in xrange(0, len(elements)) if sieve[x] is True]:
+				final_list.append(elements[i])
 			
 			for element in final_list:
 				group.add(element)
@@ -204,24 +208,29 @@ class FilterExpression(object):
 			raise EvaluationError("Unhandled operator encountered during evaluation.")
 			
 	def __repr__(self):
+		return "<FE %s [%s] %s>" % (repr(self.left), self.get_opname(), repr(self.right))
+		
+	def get_opname(self):
 		if self.operator == EQUALS:
-			opname = "EQUALS"
+			return "EQUALS"
 		elif self.operator == NOT_EQUALS:
-			opname = "NOT EQUALS"
+			return "NOT EQUALS"
 		elif self.operator == LESS_THAN:
-			opname = "LESS THAN"
+			return "LESS THAN"
 		elif self.operator == MORE_THAN:
-			opname = "MORE THAN"
+			return "MORE THAN"
 		elif self.operator == LESS_THAN_OR_EQUALS:
-			opname = "LESS THAN OR EQUAL"
+			return "LESS THAN OR EQUAL"
 		elif self.operator == MORE_THAN_OR_EQUALS:
-			opname = "MORE THAN OR EQUAL"
+			return "MORE THAN OR EQUAL"
 		elif self.operator == HAS:
-			opname = "HAS"
+			return "HAS"
 		else:
-			opname = "?"
-			
-		return "<FE %s [%s] %s>" % (repr(self.left), opname, repr(self.right))
+			return "?"
+		
+	def pretty_print(self, level=0):
+		prefix = "\t" * level
+		print prefix + "%s %s %s" % (repr(self.left), self.get_opname(), repr(self.right))
 	
 class FilterExpressionGroup(object):
 	def __init__(self):
@@ -246,13 +255,23 @@ class FilterExpressionGroup(object):
 			raise EvaluationError("Unhandled group relationship encountered during evaluation.")
 			
 	def __repr__(self):
+		return "<FEGroup %s (%s)>" % (self.get_relname(), ", ".join(repr(x) for x in self.elements))
+		
+	def get_relname(self):
 		if self.relation == AND:
-			relname = "AND"
+			return "AND"
 		elif self.relation == OR:
-			relname = "OR"
+			return "OR"
 		else:
-			relname = "?"
-		return "<FEGroup %s (%s)>" % (relname, ", ".join(repr(x) for x in self.elements))
+			return "?"
+		
+	def pretty_print(self, level=0):
+		prefix = "\t" * level
+		
+		print prefix + "group[%s] (" % self.get_relname()
+		for element in self.elements:
+			element.pretty_print(level=(level+1))
+		print prefix + ")"
 
 class FilterExpressionElement(object):
 	def select_value(self, message, scope, name, multiple=False):
