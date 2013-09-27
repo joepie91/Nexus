@@ -47,8 +47,9 @@ class Database(object):
 		return self._get_table(name, in_memory=True)
 	
 	def query(self, query, params = [], commit=False):
-		print "QUERY: %s" % query
-		print "PARAMS: %s" % repr(params)
+		#print "QUERY: %s" % query
+		#print "PARAMS: %s" % repr(params)
+		# TODO: Query log
 		
 		cur = self._get_cursor()
 		cur.execute(query, params)
@@ -109,7 +110,11 @@ class Table(object):
 	def _process_insert(self, value, key=None):
 		if key is not None:
 			value['id'] = key
-			
+		
+		for column in self.columns:
+			if column != "id" and column not in value._commit_buffer.keys():
+				value._commit_buffer[column] = None
+		
 		column_list = ", ".join("`%s`" % name for name in value._commit_buffer.keys())
 		sub_list = ", ".join("?" for name in value._commit_buffer.keys())
 		query = "INSERT INTO %s (%s) VALUES (%s)" % (self.table, column_list, sub_list)  # Not SQLi-safe!
@@ -128,6 +133,23 @@ class Table(object):
 				self._process_insert(value, key)
 			except sqlite3.IntegrityError, e:
 				raise TypeError("A row with the given ID already exists. Either edit the existing one, or append a new row using append().")
+	
+	def _set_column_names(self, names):
+		self._column_names = names
+		
+	def _retrieve_column_names(self):
+		cur = self.db.query("SELECT * FROM %s WHERE 0" % self.table)  # Not SQLi-safe!
+		self._set_column_names([x[0] for x in cur.description])
+		
+	def __getattr__(self, name):
+		if name == "columns":
+			try:
+				return self._column_names
+			except AttributeError, e:
+				self._retrieve_column_names()
+				return self._column_names
+		else:
+			raise AttributeError("No such attribute exists")
 	
 	def append(self, value):
 		return self._process_insert(value)
@@ -185,7 +207,6 @@ class MemoryTable(Table):
 		self.data[rowid]._nexus_db = self.db
 		self.data[rowid]._nexus_table = self.table
 		self.data[rowid]._nexus_type = "memory"
-		# TODO: Set None for other unset properties?
 		return rowid
 			
 	def __getitem__(self, key):
@@ -202,14 +223,14 @@ if __name__ == "__main__":
 	# Testing code
 	db = Database()
 	db.setup()
-	#table = db.get_database_table("nodes")
+	table = db.get_database_table("nodes")
+	#print table.columns
+	new_row = Row()
+	new_row['uuid'] = "abc"
+	new_row['host'] = "def"
+	new_row['port'] = 123
 	
-	#new_row = Row()
-	#new_row['uuid'] = "abc"
-	#new_row['host'] = "def"
-	#new_row['port'] = 123
-	
-	#table.append(new_row)
+	table.append(new_row)
 	#table[10] = new_row
 	
 	
