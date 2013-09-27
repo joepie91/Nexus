@@ -190,15 +190,15 @@ if __name__ == "__main__":
 	# Testing code
 	db = Database()
 	db.setup()
-	table = db.get_database_table("nodes")
+	#table = db.get_database_table("nodes")
 	
-	new_row = Row()
-	new_row['uuid'] = "abc"
-	new_row['host'] = "def"
-	new_row['port'] = 123
+	#new_row = Row()
+	#new_row['uuid'] = "abc"
+	#new_row['host'] = "def"
+	#new_row['port'] = 123
 	
 	#table.append(new_row)
-	table[10] = new_row
+	#table[10] = new_row
 	
 	
 	#table[1]['uuid'] = "bleep"
