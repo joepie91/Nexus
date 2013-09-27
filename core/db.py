@@ -169,6 +169,7 @@ class DatabaseTable(Table):
 			return self._cache[key]
 		except KeyError, e:
 			result = self.db.query("SELECT * FROM %s WHERE `id` = ?" % self.table, params=(key,))
+			self._set_column_names([x[0] for x in result.description])
 			
 			if result is None:
 				raise KeyError("No row with that ID was found in the table.")
@@ -194,6 +195,7 @@ class MemoryTable(Table):
 		
 	def _retrieve_data(self):
 		result = database.query("SELECT * FROM %s" % self.table)  # Not SQLi-safe!
+		self._set_column_names([x[0] for x in result.description])
 		
 		for row in result:
 			row._nexus_db = self.db
