@@ -169,12 +169,14 @@ class MemoryTable(Table):
 	def __init__(self, database, table_name):
 		Table.__init__(self, database, table_name)
 		self.data = {}
+		self._retrieve_data()
 		
-		result = database.query("SELECT * FROM %s" % table_name)  # Not SQLi-safe!
+	def _retrieve_data(self):
+		result = database.query("SELECT * FROM %s" % self.table)  # Not SQLi-safe!
 		
 		for row in result:
-			row._nexus_db = database
-			row._nexus_table = table_name
+			row._nexus_db = self.db
+			row._nexus_table = self.table
 			row._nexus_type = "memory"
 			self.data[row['id']] = row
 			
@@ -191,6 +193,9 @@ class MemoryTable(Table):
 	def __setitem__(self, key, value):
 		self._try_set(key, value, self.data)
 	
+	def refresh(self):
+		self.data = {}
+		self._retrieve_data()
 
 if __name__ == "__main__":
 	# Testing code
