@@ -160,8 +160,12 @@ class DatabaseTable(Table):
 				
 	def __setitem__(self, key, value):
 		self._try_set(key, value, self._cache)
+		
+	def purge(self):
+		self._cache = {}
 
 class MemoryTable(Table):
+	# TODO: .refresh()
 	def __init__(self, database, table_name):
 		Table.__init__(self, database, table_name)
 		self.data = {}
@@ -177,6 +181,8 @@ class MemoryTable(Table):
 	def _process_insert(self, value, key=None):
 		rowid = Table._process_insert(self, value, key)
 		self.data[rowid] = value
+		# TODO: Set table and stuff internally
+		# TODO: Set None for other unset properties?
 		return rowid
 			
 	def __getitem__(self, key):
