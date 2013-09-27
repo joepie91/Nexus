@@ -165,7 +165,6 @@ class DatabaseTable(Table):
 		self._cache = {}
 
 class MemoryTable(Table):
-	# TODO: .refresh()
 	def __init__(self, database, table_name):
 		Table.__init__(self, database, table_name)
 		self.data = {}
@@ -183,7 +182,9 @@ class MemoryTable(Table):
 	def _process_insert(self, value, key=None):
 		rowid = Table._process_insert(self, value, key)
 		self.data[rowid] = value
-		# TODO: Set table and stuff internally
+		self.data[rowid]._nexus_db = self.db
+		self.data[rowid]._nexus_table = self.table
+		self.data[rowid]._nexus_type = "memory"
 		# TODO: Set None for other unset properties?
 		return rowid
 			
