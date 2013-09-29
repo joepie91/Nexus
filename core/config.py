@@ -98,6 +98,3 @@ class ConfigurationReader(object):
 					includedata = self.read_config(file_)
 					self.configdata = dict_combine_recursive(self.configdata, includedata)
 					self.config_includes(includedata)
-		
-if __name__ == "__main__":
-	c = ConfigurationReader("test.yaml")
