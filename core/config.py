@@ -1,6 +1,4 @@
-import yaml, glob, os
-import logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+import yaml, glob, os, logging
 
 from util import dict_combine_recursive
 
@@ -52,6 +50,13 @@ class ConfigurationReader(object):
 			logging.debug("Own privkey is %s" % self.privkey)
 		except KeyError, e:
 			raise ConfigurationError("You must specify a private key for this node.")
+			
+		try:
+			self.database = configdata['self']['database']
+		except KeyError, e:
+			self.database = "node.db"
+			
+		logging.debug("Database location is %s" % self.database)
 		
 	def config_nodes(self, configdata):
 		try:
@@ -60,16 +65,18 @@ class ConfigurationReader(object):
 			self.nodes = {} # Optional
 		
 		for uuid, node in self.nodes.iteritems():
-			if "ip" not in node:
-				raise ConfigurationError("IP is missing for node %s." % uuid)
+			if "host" not in node:
+				raise ConfigurationError("Hostname is missing for node %s." % uuid)
 			if "port" not in node:
 				raise ConfigurationError("Port is missing for node %s." % uuid)
 			if "pubkey" not in node:
 				raise ConfigurationError("Public key is missing for node %s." % uuid)
 			if "permissions" not in node:
 				node['permissions'] = [] # Optional
+			if "override" not in node:
+				node['override'] = False
 				
-			logging.debug("Node %s : IP %s, port %s, pubkey %s, permissions %s" % (uuid, node["ip"], node["port"], node["pubkey"], "|".join(node["permissions"])))
+			logging.debug("Node %s : Hostname %s, port %s, pubkey %s, permissions %s" % (uuid, node["host"], node["port"], node["pubkey"], "|".join(node["permissions"])))
 			
 	def config_package_settings(self, configdata):
 		try:

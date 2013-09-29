@@ -194,7 +194,7 @@ class MemoryTable(Table):
 		self._retrieve_data()
 		
 	def _retrieve_data(self):
-		result = database.query("SELECT * FROM %s" % self.table)  # Not SQLi-safe!
+		result = self.db.query("SELECT * FROM %s" % self.table)  # Not SQLi-safe!
 		self._set_column_names([x[0] for x in result.description])
 		
 		for row in result:
