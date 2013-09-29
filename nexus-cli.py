@@ -11,7 +11,7 @@ if len(sys.argv) < 2:
 
 if sys.argv[1] == "start":
 	import application
-	application.run(sys.argv[2:])
+	application.run(sys.argv[2:], "blah")
 elif sys.argv[1] == "stop":
 	pass
 else:
