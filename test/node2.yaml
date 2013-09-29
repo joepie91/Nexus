@@ -1,0 +1,12 @@
+self:
+    uuid: db149623-5c75-484d-8cd3-fcabf7717008
+    port: 3002
+    pubkey: placeholder
+    privkey: placeholder
+    database: test/data/node2.db
+
+nodes:
+    abcd:
+        host: 9fb523e5-3948-425c-8642-01c586f699c7
+        port: 3001
+        pubkey: placeholder
