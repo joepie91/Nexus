@@ -139,6 +139,24 @@ The abstraction layer can be used by importing `nexus.core.db`.
 	row::
 		A Row object representing the new row to insert.
 
+^ DatabaseTable.purge()
+
+	Purges the internal row cache of a DatabaseTable.
+	
+	! You cannot use this method for a MemoryTable! Use .refresh()
+	  instead.
+	  
+^ MemoryTable.refresh()
+
+	Replaces the current copy of the table in memory, with a newly
+	retrieved copy. You'll need to call this regularly when you
+	have multiple applications modifying the same table, to prevent
+	going out of sync. If synchronized data is absolutely essential
+	at all times, use a DatabaseTable instead.
+	
+	! You cannot use this method for a DatabaseTable! Use .purge()
+	  instead.
+
 ^ Row()
 
 	Creates a new Row object. You'll only need to use this if you
