@@ -1,2 +1,4 @@
 *.pyc
 config.yaml
+node.db
+test/data/*
