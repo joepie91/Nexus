@@ -55,6 +55,16 @@ class ConfigurationReader(object):
 			self.database = configdata['self']['database']
 		except KeyError, e:
 			self.database = "node.db"
+		
+		try:
+			self.port = configdata['self']['port']
+		except KeyError, e:
+			self.port = 3009
+		
+		try:
+			self.bound_ip = configdata['self']['ip']
+		except KeyError, e:
+			self.bound_ip = "*"
 			
 		logging.debug("Database location is %s" % self.database)
 		
